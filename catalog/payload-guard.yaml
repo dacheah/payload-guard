@@ -1,0 +1,20 @@
+name: payload-guard
+repo: https://github.com/dacheah/payload-guard
+sha: 093f00d2834620bb832d068152861b97ea4995da
+description: >-
+  Pre-flight the request Hermes is about to send against empirically measured provider payload
+  ceilings (body bytes, total and per-image bytes, image count, input-token budget) and warn
+  before the call is spent. Warn-only: it never rewrites your payload.
+version: 1.1.0
+maintainer: dacheah
+tier: community
+category: platform
+docs_url: https://github.com/dacheah/payload-guard#readme
+capabilities:
+  provides_tools: []
+  provides_hooks:
+    - pre_api_request
+    - post_api_request
+    - api_request_error
+  provides_middleware: []
+  requires_env: []
