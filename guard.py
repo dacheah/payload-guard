@@ -5,7 +5,7 @@ total image bytes) and compares it against the empirically measured ceilings pub
 in github.com/dacheah/payload-walls, pinned into ``limits.pin.json``.
 
 Pure module: no Hermes imports at module scope, so it is unit-testable standalone.
-The plugin's ``__init__.py`` wires it into ``llm_request`` middleware and the
+The plugin's ``__init__.py`` wires it into the ``pre_api_request`` hook and the
 ``pre_api_request`` hook.
 """
 
@@ -68,7 +68,7 @@ class Measure:
     #: lower bound, and no verdict may claim the payload is inside a body ceiling.
     body_incomplete: bool = False
     #: What the body figure covers: "messages" (the pre-flight hook sees only the messages),
-    #: "messages+system", or "whole-request" (the middleware surface, where the real request
+    #: "messages+system", or "whole-request" (the surface handed the real request dict,
     #: dict is available). The pin's body ceilings are whole-request numbers, so anything
     #: short of "whole-request" is a LOWER bound and every report says so.
     body_scope: str = "messages"
@@ -264,7 +264,7 @@ def estimate_request_body(request: Any) -> Optional[int]:
     """Whole-request body bytes, or None when there is no request mapping to measure.
 
     The pin's body ceilings describe the whole request, tool schemas included, so a figure
-    taken from ``messages`` alone understates it. Only the middleware surface has the dict
+    taken from ``messages`` alone understates it. Only the surface handed the request dict
     Hermes is about to serialise, so only there is a body figure a whole-body figure.
     """
     if not isinstance(request, dict):
@@ -751,76 +751,6 @@ def breaches(findings: Iterable[Finding]) -> List[Finding]:
     return [f for f in findings if f.severity == "breach"]
 
 
-# --------------------------------------------------------------------------------------
-# actions (only ever taken in shrink mode)
-# --------------------------------------------------------------------------------------
-
-
-def plan_actions(measure: Measure, findings: List[Finding]) -> List[Dict[str, Any]]:
-    """Decide the minimal payload surgery that would clear a predicted breach."""
-    actions: List[Dict[str, Any]] = []
-    hard = breaches(findings)
-    if not hard:
-        return actions
-    keys = {f.key for f in hard}
-
-    if ITEMS in keys:
-        target = _finite_int(next((f.limit for f in hard if f.key == ITEMS), None))
-        if target is not None:
-            actions.append({"action": "drop_oldest_images", "target_images": max(0, target),
-                            "reason": f"{measure.images} images > limit {target}"})
-    if keys & {IMAGE_TOTAL, ITEM, BODY}:
-        actions.append({"action": "shrink_images", "reason": "image bytes over a measured wall"})
-    return actions
-
-
-def drop_oldest_images(messages: List[Any], target_images: int, *, protect_last: int = 1,
-                       placeholder: str = "[older image removed by payload-guard to fit the provider limit]") -> int:
-    """Remove expendable image parts oldest-first until at/under ``target_images``.
-
-    Returns the number of parts removed. Two things are never touched: the last
-    ``protect_last`` messages (the live turn) and any ``role: user`` message, because a
-    user's upload is theirs to keep -- the model must not end up answering about photos that
-    were silently deleted. Removal stops as soon as the count fits, so a one-image overshoot
-    costs one image rather than a whole message's worth.
-    """
-    if not isinstance(messages, list):
-        return 0
-    if not isinstance(target_images, int):
-        target_images = _finite_int(target_images)
-        if target_images is None:
-            return 0
-    removed = 0
-    remaining = content_count(messages)
-    live_from = max(0, len(messages) - max(0, protect_last))
-    for index in range(live_from):
-        if remaining <= target_images:
-            break
-        message = messages[index]
-        if not isinstance(message, dict):
-            continue
-        # A user upload is never evicted: Hermes' own policy reserves the images the user
-        # attached, and a guard that deletes them makes the model answer about photos it can
-        # no longer see. Only older tool-result carriers are expendable.
-        if str(message.get("role") or "").strip().lower() == "user":
-            continue
-        content = message.get("content")
-        if not isinstance(content, list):
-            continue
-        kept = []
-        for part in content:
-            if remaining > target_images and removed_here(part):
-                removed += 1
-                remaining -= 1
-                continue
-            kept.append(part)
-        if len(kept) != len(content):
-            if not kept:
-                kept = [{"type": "text", "text": placeholder}]
-            message["content"] = kept
-    return removed
-
-
 def removed_here(part: Any) -> bool:
     if not isinstance(part, dict):
         return False
@@ -841,40 +771,6 @@ def content_count(messages: List[Any]) -> int:
     return count
 
 
-def shrink_images(messages: List[Any], *, max_dimension: int = 8000) -> bool:
-    """Re-encode oversized image parts via Hermes' own recovery helper (in place)."""
-    try:
-        from agent.conversation_compression import try_shrink_image_parts_in_messages
-    except Exception as exc:  # running outside Hermes (unit tests) or helper moved
-        logger.debug("payload-guard: shrink helper unavailable (%s)", exc)
-        return False
-    try:
-        return bool(try_shrink_image_parts_in_messages(messages, max_dimension=max_dimension))
-    except Exception as exc:
-        logger.warning("payload-guard: shrink failed: %s", exc)
-        return False
-
-
-def apply_actions(messages: List[Any], actions: List[Dict[str, Any]], measure: Measure, *,
-                  max_dimension: int = 8000) -> Tuple[List[Dict[str, Any]], Measure]:
-    """Run the planned actions on ``messages`` in place; return (taken, fresh measure)."""
-    taken: List[Dict[str, Any]] = []
-    current = measure
-    for action in actions:
-        name = action.get("action")
-        if name == "drop_oldest_images":
-            target = int(action.get("target_images") or 0)
-            removed = drop_oldest_images(messages, target)
-            if removed:
-                taken.append({"action": name, "removed_images": removed, "target_images": target})
-        elif name == "shrink_images":
-            if shrink_images(messages, max_dimension=max_dimension):
-                taken.append({"action": name, "max_dimension": max_dimension})
-    if taken:
-        current = measure_messages(messages)
-    return taken, current
-
-
 # --------------------------------------------------------------------------------------
 # one-call pre-flight
 # --------------------------------------------------------------------------------------
@@ -889,8 +785,6 @@ class Report:
     mode: str = "warn"
     measure: Dict[str, Any] = field(default_factory=dict)
     findings: List[Finding] = field(default_factory=list)
-    actions: List[Dict[str, Any]] = field(default_factory=list)
-    changed: bool = False
     notes: List[str] = field(default_factory=list)
     #: measured (a row with limits was found) | no-row | no-limits | pin-invalid | partial.
     #: Anything other than ``measured`` means the request was NOT checked against a ceiling,
@@ -957,8 +851,6 @@ class Report:
             "worst": self.worst,
             "measure": self.measure,
             "findings": [f.as_dict() for f in self.findings],
-            "actions": self.actions,
-            "changed": self.changed,
             "notes": self.notes,
             "coverage": self.coverage,
         }
@@ -981,8 +873,6 @@ class Report:
             parts.append("no limit known for this provider")
         else:
             parts.append(f"not checked ({self.coverage})")
-        if self.actions:
-            parts.append("actions=" + ",".join(str(a.get("action")) for a in self.actions))
         return " | ".join(parts)
 
 
@@ -1074,20 +964,19 @@ def assess(measure: "Measure", *, provider: str = "", model: str = "", mode: str
 
 def preflight(messages: Any, *, provider: str = "", model: str = "", mode: str = "warn",
               pin: Optional[Dict[str, Any]] = None, approx_input_tokens: int = 0,
-              token_warn_ratio: float = 0.9, max_dimension: int = 8000,
-              apply: bool = False, system_prompt: Any = "", request_body: Any = None,
-              tool_count: int = 0, base_url: str = "", resolve_as: str = "") -> Report:
-    """Measure ``messages``, evaluate them against the pin, and optionally act.
+              token_warn_ratio: float = 0.9, system_prompt: Any = "",
+              request_body: Any = None, tool_count: int = 0, base_url: str = "",
+              resolve_as: str = "") -> Report:
+    """Measure ``messages`` and evaluate them against the pin.
 
-    Returns a :class:`Report`. When ``apply`` is true (and ``mode`` is ``shrink``) the
-    ``messages`` list is mutated in place to clear any predicted breach, and
-    ``report.changed`` says whether it was touched.
+    Read-only by design: the payload is never touched. v1.1.0 is warn-only — the
+    rewrite path lives on the ``shrink-mode`` branch, unproven against a live rejection.
     """
     measure = measure_messages(messages)
     measure.tool_count = max(0, _finite_int(tool_count) or 0)
     whole = estimate_request_body(request_body) if request_body is not None else None
     if whole is not None:
-        # The middleware sees the dict Hermes is about to serialise: system prompt and tool
+        # This surface sees the dict Hermes is about to serialise: system prompt and tool
         # schemas included, which is what the pin's body ceilings describe.
         measure.body_bytes = whole
         measure.body_scope = BODY_SCOPE_WHOLE
@@ -1098,35 +987,6 @@ def preflight(messages: Any, *, provider: str = "", model: str = "", mode: str =
     report = assess(measure, provider=provider, model=model, mode=mode, pin=pin,
                     base_url=base_url, resolve_as=resolve_as,
                     approx_input_tokens=approx_input_tokens, token_warn_ratio=token_warn_ratio)
-    if not apply or mode != "shrink":
-        return report
-
-    # The shrink tail re-evaluates the rewritten payload, so it needs the row again (assess()
-    # keeps its resolution to itself).
-    resolution = resolve(pin if pin is not None else load_pin(), resolve_as or provider, model,
-                         base_url=base_url)
-    actions = plan_actions(measure, report.findings)
-    if not actions:
-        return report
-    taken, fresh = apply_actions(messages, actions, measure, max_dimension=max_dimension)
-    if taken:
-        report.actions = taken
-        report.measure = fresh.as_dict()
-        report.findings = _sorted(evaluate(fresh, resolution))
-        report.changed = True
-    else:
-        # Say what was tried and what is known; never assert a cause that was not measured.
-        tried = ", ".join(str(a.get("action")) for a in actions)
-        report.notes.append(
-            f"no action taken: {tried} changed nothing. Core's image shrink only rewrites "
-            "parts over 4 MiB or max_dimension, so a byte-budget breach across many medium "
-            "images needs images retired, not re-encoded"
-        )
-    if report.changed and report.worst == "breach":
-        report.notes.append(
-            "a rewrite was applied and the payload is still over a measured wall — "
-            "it was not made to fit"
-        )
     return report
 
 
@@ -1188,11 +1048,6 @@ def format_report(report: "Report") -> str:
         # "OK" only when a ceiling really was checked; otherwise the outcome says UNKNOWN
         # and why (no row, no numeric ceiling, unreadable pin, unmeasurable payload).
         lines.append("  verdict: " + report.outcome)
-    if report.actions:
-        for action in report.actions:
-            lines.append(f"  action: {action}")
-    if report.changed:
-        lines.append("  payload rewritten to fit")
     return "\n".join(lines)
 
 
@@ -1318,8 +1173,6 @@ def _record_locked(report: "Report", path: Any = None) -> None:
     worst = report.worst
     if worst == "breach":
         state["breaches"] = int(state.get("breaches") or 0) + 1
-    if report.changed:
-        state["rewrites"] = int(state.get("rewrites") or 0) + 1
     detail = "; ".join(
         describe_finding(f) for f in (report.findings or []) if f.severity != "ok"
     ) or ("within limits" if report.worst == "ok" else report.outcome)
@@ -1334,8 +1187,6 @@ def _record_locked(report: "Report", path: Any = None) -> None:
         "coverage": report.coverage,
         "detail": detail,
         "measure": report.measure,
-        "actions": report.actions,
-        "changed": bool(report.changed),
         "notes": list(report.notes),
     }
     state["last"] = ([entry] + list(state.get("last") or []))[:STATE_KEEP]

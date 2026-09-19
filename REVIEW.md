@@ -111,8 +111,8 @@ dataset; the plugin loads and fires against the live install (state file now rec
 **Closed 2026-09-20 (the two called out after the review):**
 
 - **The body figure now says what it covers.** `Measure.body_scope` is `whole-request` on the
-  middleware surface (it measures the request dict Hermes is about to serialise -- system prompt
-  and tool schemas included, transport kwargs such as `timeout` excluded), `messages+system` on
+  request-dict surface (it measures the dict Hermes is about to serialise -- system prompt and
+  tool schemas included, transport kwargs such as `timeout` excluded), `messages+system` on
   the pre-flight hook, and `messages` for the CLI's user-supplied figures. Every `BODY` finding
   carries the scope in its note, and when the scope is partial and the figure sits at 75-100% of
   a body ceiling the verdict is **advisory, not OK**: that close to the wall the missing tool
@@ -138,8 +138,11 @@ dataset; the plugin loads and fires against the live install (state file now rec
 
 **Still open:**
 
-- **Shrink mode is still not enabled or tested against a live rejection.** Its rewrites are safer
-  now, but the honest status is "unproven against a real provider 4xx".
+- **The rewrite surface was removed in 1.1.0.** `mode: shrink` was never proven against a live
+  provider rejection, and the plugin's brief was observe-and-warn, so publishing it would have
+  shipped an unproven payload-rewriting path in a trust-signal catalog. The implementation and
+  its tests are preserved on the `shrink-mode` branch; setting `mode: shrink` now logs a warning
+  and runs warn-only. This is also what took the scanner from `high=1` to `high=0`.
 - **A documented-only row can still read `ok`** when the request is inside the vendor's stated
   number (e.g. `xai`). The number is advisory, not a measurement, and the row says so.
 - **Provenance is self-asserted.** The hashes make the chain checkable, but nothing signs the
@@ -150,11 +153,10 @@ dataset; the plugin loads and fires against the live install (state file now rec
 
 ## Scanner status
 
-`hermes plugin-guard scan` reports **high=1, medium=1**, both reviewed and accepted:
+`hermes plugin-guard scan` reports **medium=1, PASS** for v1.1.0. `HPG110` (the privileged
+`llm_request` middleware) was resolved by removing the rewrite path, exactly as this section
+recommended while the finding was open. The remaining finding is accepted:
 
-- `HPG110` — the `llm_request` middleware. Gated: it is registered **only** when
-  `mode: shrink`, never in the configured `warn` mode, and documented in `SECURITY.md`.
-  Static scanners will always flag the registration; delete shrink mode if you want it clean.
 - `HPG108` — `os.unlink()` in the temp-file cleanup path. Confined to a file this plugin just
   created with `O_EXCL` inside the resolved state directory, guarded by an explicit
   parent/name/symlink check; it removes only our own litter.

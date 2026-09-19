@@ -86,13 +86,6 @@ def test_register_wires_the_hook_commands_and_skips_the_middleware_in_warn_mode(
     assert len(ctx.commands) == 1 and len(ctx.cli) == 1
 
 
-def test_register_takes_the_middleware_in_shrink_mode(plugin, monkeypatch):
-    monkeypatch.setattr(plugin, "_load_config", lambda: {**plugin.DEFAULT_CONFIG, "mode": "shrink"})
-    ctx = StubCtx()
-    plugin.register(ctx)
-    assert [kind for kind, _ in ctx.middleware] == ["llm_request"]
-
-
 def test_register_is_inert_when_disabled(plugin, monkeypatch):
     monkeypatch.setattr(plugin, "_load_config", lambda: {**plugin.DEFAULT_CONFIG, "enabled": False})
     ctx = StubCtx()
@@ -123,46 +116,6 @@ def test_hook_measures_but_records_nothing_when_all_is_well(plugin):
                               model="gpt-4.1-mini", request_messages=messages_with(2, 1000))
     assert plugin._LAST["report"]["worst"] == "ok"
     assert state(plugin) == {}
-
-
-def test_middleware_returns_none_when_nothing_changed(plugin, monkeypatch):
-    monkeypatch.setattr(plugin, "_load_config", lambda: {**plugin.DEFAULT_CONFIG, "mode": "shrink"})
-    request = {"model": "qwen3.8-flash", "messages": messages_with(2, 1000)}
-    assert plugin.on_llm_request(request=request, provider="alibaba", model="qwen3.8-flash") is None
-
-
-def test_middleware_rewrites_only_when_it_can_fix_the_payload(plugin, monkeypatch):
-    monkeypatch.setattr(plugin, "_load_config", lambda: {**plugin.DEFAULT_CONFIG, "mode": "shrink"})
-    def carrier(count: int, role: str) -> dict:
-        return {"role": role,
-                "content": [{"type": "image_url",
-                             "image_url": {"url": "data:image/png;base64," + "A" * 533_000}}]
-                * count}
-
-    messages = [carrier(84, "tool") for _ in range(3)]   # historic tool results
-    messages.append(carrier(1, "user"))                  # the live turn: 253 vs a cap of 250
-    result = plugin.on_llm_request(
-        request={"model": "qwen3.8-flash", "messages": messages},
-        provider="alibaba", model="qwen3.8-flash", session_id="s2", api_call_count=3,
-    )
-    assert isinstance(result, dict) and "request" in result
-    assert plugin._LAST["report"]["changed"] is True
-    assert state(plugin)["rewrites"] == 1
-
-
-def test_middleware_leaves_an_unfixable_breach_alone(plugin, monkeypatch):
-    monkeypatch.setattr(plugin, "_load_config", lambda: {**plugin.DEFAULT_CONFIG, "mode": "shrink"})
-    request = {"model": "qwen3.8-flash", "messages": messages_with(251, 400_000)}
-    assert plugin.on_llm_request(request=request, provider="alibaba", model="qwen3.8-flash") is None
-    assert plugin._LAST["report"]["worst"] == "breach"
-
-
-def test_middleware_is_inert_in_warn_mode_even_if_it_gets_called(plugin, monkeypatch):
-    monkeypatch.setattr(plugin, "_load_config", lambda: dict(plugin.DEFAULT_CONFIG))
-    request = {"model": "qwen3.8-flash", "messages": messages_with(251, 400_000)}
-    before = json.dumps(request["messages"])
-    assert plugin.on_llm_request(request=request, provider="alibaba", model="qwen3.8-flash") is None
-    assert json.dumps(request["messages"]) == before
 
 
 def test_post_api_request_scores_a_prediction_that_was_accepted(plugin):

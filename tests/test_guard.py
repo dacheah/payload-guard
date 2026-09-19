@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -24,7 +25,9 @@ sys.path.insert(0, str(PLUGIN_DIR))
 
 import guard as g  # noqa: E402
 
-REPO_LIMITS = Path("/home/dan/llm-request-budgets/limits.json")
+#: The published dataset, wherever this host keeps it (tests skip when it is absent).
+REPO_LIMITS = Path(os.environ.get("PAYLOAD_WALLS_JSON")
+                   or Path.home() / "llm-request-budgets" / "limits.json")
 PIN = g.load_pin()
 
 # --- ground truth pulled from the dataset ---------------------------------------------
@@ -353,46 +356,16 @@ def test_pin_rows_are_honest_about_confidence():
 # --------------------------------------------------------------------------- actions
 
 
-def test_drop_oldest_images_protects_user_uploads_and_the_live_turn():
-    """Regression: a tool loop's live message is the tool result, so 'protect the last
-    message' alone let shrink delete the photos the user had just attached."""
-    messages = [
-        {"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_uri(1000)}}]},
-        {"role": "assistant", "content": "ok"},
-        tool_message_with_images(1, 1000),
-        {"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_uri(1000)}}, {"type": "text", "text": "and this"}]},
-    ]
-    removed = g.drop_oldest_images(messages, target_images=2)
-    assert removed == 1                                    # stops at the target
-    assert g.content_count(messages) == 2
-    assert messages[0]["content"][0]["type"] == "image_url"   # oldest: a user upload, kept
-    assert any(p.get("type") == "image_url" for p in messages[-1]["content"])  # live turn kept
-    assert messages[2]["content"][0]["type"] == "text"        # the tool carrier is what went
+def test_preflight_never_touches_the_payload():
+    """v1.1.0 is read-only: no mode, no config, no finding may mutate what was passed in."""
+    import copy
 
-
-def test_shrink_mode_rewrites_the_payload_to_fit():
-    messages = [tool_message_with_images(84, 400_000) for _ in range(3)]
-    messages.append(user_message_with_images(1, 400_000))  # 253 images, cap is 250
-    report = g.preflight(messages, provider="alibaba", model="qwen3.8-flash", pin=PIN, mode="shrink",
-                         apply=True)
-    assert report.changed is True
-    assert report.actions[0]["action"] == "drop_oldest_images"
-    assert report.measure["images"] <= 250
-    assert report.breaches == []
-    assert g.content_count(messages) <= 250
-    assert any(p.get("type") == "image_url" for p in messages[-1]["content"])  # live turn kept
-
-
-def test_shrink_mode_refuses_to_delete_a_user_upload():
-    """An unfixable breach is reported, not papered over -- and the user's own images are
-    never the thing that gets sacrificed to make the number fit."""
-    messages = [user_message_with_images(251, 400_000)]
-    report = g.preflight(messages, provider="alibaba", model="qwen3.8-flash", pin=PIN, mode="shrink",
-                         apply=True)
-    assert report.changed is False
-    assert report.breaches                      # still a breach, honestly
-    assert g.content_count(messages) == 251     # nothing was taken
-    assert any("no action taken" in n for n in report.notes)
+    payload = [{"role": "user", "content": [{"type": "image", "data": "A" * 5000}] * 3}]
+    before = copy.deepcopy(payload)
+    report = g.preflight(payload, provider="openai", model="gpt-4.1-mini",
+                             request_body={"messages": payload}, tool_count=40)
+    assert payload == before, "pre-flight mutated the caller's messages"
+    assert not hasattr(report, "changed") and not hasattr(report, "actions")
 
 
 def test_images_nested_in_anthropic_tool_results_are_measured():
@@ -452,23 +425,6 @@ def test_an_unusable_pin_is_unknown_never_ok(tmp_path):
     assert report.outcome.startswith("UNKNOWN")
 
 
-def test_warn_mode_never_touches_the_payload():
-    messages = [user_message_with_images(251, 400_000)]
-    before = json.dumps(messages, separators=(",", ":"))
-    report = g.preflight(messages, provider="alibaba", model="qwen3.8-flash", pin=PIN, mode="warn", apply=True)
-    assert report.changed is False
-    assert json.dumps(messages, separators=(",", ":")) == before
-
-
-def test_shrink_images_is_safe_when_the_core_helper_is_absent():
-    assert g.shrink_images([]) is False
-
-
-def test_plan_actions_ignores_advisories():
-    report = measure_for("zai", "glm-4.5v", [{"role": "user", "content": "x" * 220_000_000}])
-    assert g.plan_actions(g.measure_messages([]), report.findings) == []
-
-
 # --------------------------------------------------------------------------- state
 
 
@@ -508,7 +464,7 @@ def test_pin_is_faithful_to_the_published_dataset():
     assert fresh["aliases"] == vendored["aliases"]
 
 # --------------------------------------------------------------------------------------
-# residual 1: the body figure says what it covers, and only the middleware sees it whole
+# the body figure says what it covers (only the request-dict surface sees it whole)
 # --------------------------------------------------------------------------------------
 
 

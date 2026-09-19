@@ -2,16 +2,13 @@
 
 Compares the request Hermes is about to send against the empirically measured
 provider ceilings published in https://github.com/dacheah/payload-walls (pinned into
-``limits.pin.json``), and either warns (``mode: warn``, the default) or rewrites the
-payload to fit (``mode: shrink``).
+``limits.pin.json``), and warns before the request is sent. Read-only: it
+never rewrites the payload.
 
 Surfaces registered:
   * ``pre_api_request`` hook — always. Measures the real outgoing request, records
     findings, logs a warning on any predicted wall. Read-only: this hook cannot cancel
     or alter a call.
-  * ``llm_request`` middleware — only when ``mode: shrink``. This is the one surface
-    that can rewrite the provider payload before it is sent. It costs a deep copy of
-    the payload per call, which is why it is opt-in.
   * ``post_api_request`` hook — calibration: records when a predicted breach was
     accepted anyway, so an over-conservative pin is visible instead of silent.
   * ``/payload-guard`` slash command and ``hermes payload-guard`` CLI.
@@ -22,10 +19,9 @@ Config (``config.yaml`` → ``plugins.entries.payload-guard``), all keys optiona
       entries:
         payload-guard:
           enabled: true
-          mode: warn            # warn | shrink | off
+          mode: warn            # warn | off ('shrink' was removed in 1.1.0)
           log_calls: false      # info-log every measured call
           token_warn_ratio: 0.9
-          shrink_max_dimension: 8000
           pin_path: ""          # override the vendored limits.pin.json
           state_path: ""        # override ~/.hermes/payload-guard/state.json
 """
@@ -56,7 +52,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "mode": "warn",
     "log_calls": False,
     "token_warn_ratio": 0.9,
-    "shrink_max_dimension": 8000,
     "pin_path": "",
     "state_path": "",
 }
@@ -91,7 +86,16 @@ def _load_config() -> Dict[str, Any]:
         logger.debug("%s: config load failed: %s", PLUGIN_ID, exc)
 
     config["mode"] = str(config.get("mode") or "warn").strip().lower()
-    if config["mode"] not in ("warn", "shrink", "off"):
+    if config["mode"] == "shrink":
+        # v1.1.0 removed the payload-rewriting middleware: it was never proven against a
+        # live rejection, and the brief for this plugin was observe-and-warn. Never silent.
+        logger.warning(
+            "%s: mode 'shrink' was removed in 1.1.0 (payload rewrites were never proven "
+            "against a live rejection; see the shrink-mode branch) — running warn-only",
+            PLUGIN_ID,
+        )
+        config["mode"] = "warn"
+    elif config["mode"] not in ("warn", "off"):
         logger.warning("%s: unknown mode %r — falling back to 'warn'", PLUGIN_ID, config["mode"])
         config["mode"] = "warn"
     return config
@@ -123,8 +127,6 @@ def _remember(key: str, report: "g.Report") -> None:
         "keys": [f.key for f in report.breaches],
         "provider": report.provider,
         "model": report.model,
-        "actions": report.actions,
-        "changed": report.changed,
         "mode": report.mode,
         "ts": _now(),
     }
@@ -217,8 +219,6 @@ def on_pre_api_request(
 
         prior = _PENDING.get(key)
         if prior:
-            report.actions = prior.get("actions") or []
-            report.changed = bool(prior.get("changed"))
             report.mode = prior.get("mode") or report.mode
         _remember(key, report)
         _LAST.clear()
@@ -242,92 +242,6 @@ def on_pre_api_request(
             g.record(report, config.get("state_path"))
     except Exception as exc:  # never break a turn
         logger.debug("%s: pre_api_request failed: %s", PLUGIN_ID, exc)
-
-
-def on_llm_request(
-    *,
-    request: Any = None,
-    provider: str = "",
-    model: str = "",
-    api_mode: str = "",
-    session_id: str = "",
-    api_call_count: int = 0,
-    api_request_id: str = "",
-    base_url: str = "",
-    tool_count: int = 0,
-    **_: Any,
-) -> Optional[Dict[str, Any]]:
-    """The only surface that can rewrite the payload. Registered only in shrink mode."""
-    config = _load_config()
-    if config["mode"] != "shrink" or not config.get("enabled", True):
-        return None
-    try:
-        if not isinstance(request, dict):
-            return None
-        pin = _pin(config)
-        if not pin:
-            return None
-        key = "messages" if isinstance(request.get("messages"), list) else "input"
-        messages = request.get(key)
-        if not isinstance(messages, list):
-            return None
-        # Rewrite our own copy. The host normally hands us a deepcopy, but its copy helper
-        # falls back to a top-level dict() when deepcopy fails, and in that case an in-place
-        # edit would reach the transcript Hermes keeps for retries.
-        messages = [dict(m) if isinstance(m, dict) else m for m in messages]
-        for message in messages:
-            content = message.get("content") if isinstance(message, dict) else None
-            if isinstance(content, list):
-                message["content"] = list(content)
-
-        report = g.preflight(
-            messages,
-            provider=provider,
-            model=model,
-            pin=pin,
-            mode="shrink",
-            apply=True,
-            max_dimension=int(config.get("shrink_max_dimension") or 8000),
-            # The only surface holding the dict Hermes is about to serialise: measuring it
-            # makes the body figure whole-request (system prompt and tool schemas included),
-            # which is what the pin's body ceilings describe.
-            request_body=request,
-            resolve_as=_provider_for_pin(provider, pin),
-            base_url=base_url,
-            tool_count=int(tool_count or 0),
-        )
-        report.notes.append(f"api_mode={api_mode}")
-        _remember(api_request_id or f"{session_id}:{api_call_count}", report)
-        _LAST.clear()
-        _LAST.update({"surface": "llm_request", "report": report.as_dict(), "ts": _now()})
-
-        if report.changed and report.worst != "breach":
-            logger.warning(
-                "%s: rewrote the outgoing payload to fit — %s", PLUGIN_ID,
-                "; ".join(str(a) for a in (report.actions or [])) or "shrank image parts",
-            )
-            g.record(report, config.get("state_path"))
-            rewritten = dict(request)
-            rewritten[key] = messages
-            return {"request": rewritten}
-        if report.changed:
-            # Say what is true: something was changed and the payload is still over a wall.
-            logger.warning(
-                "%s: rewrote the outgoing payload but it is STILL over a measured wall — %s",
-                PLUGIN_ID, "; ".join(str(a) for a in (report.actions or [])) or "shrank image parts",
-            )
-            g.record(report, config.get("state_path"))
-            rewritten = dict(request)
-            rewritten[key] = messages
-            return {"request": rewritten}
-        if report.worst == "breach":
-            for finding in report.breaches:
-                logger.warning("%s: predicted wall, no fix applied — %s", PLUGIN_ID, g.describe_finding(finding))
-            g.record(report, config.get("state_path"))
-        return None
-    except Exception as exc:
-        logger.debug("%s: llm_request middleware failed: %s", PLUGIN_ID, exc)
-        return None
 
 
 def on_post_api_request(
@@ -629,13 +543,7 @@ def register(ctx: Any) -> None:
     ctx.register_hook("pre_api_request", on_pre_api_request)
     ctx.register_hook("post_api_request", on_post_api_request)
     ctx.register_hook("api_request_error", on_api_request_error)
-    if config["mode"] == "shrink":
-        # Opt-in: this path deep-copies every payload, so only pay that cost when a
-        # rewrite is actually wanted. Changing mode needs a process restart.
-        ctx.register_middleware("llm_request", on_llm_request)
-        logger.info("%s: shrink mode — payload rewrites enabled", PLUGIN_ID)
-    else:
-        logger.info("%s: ready in %s mode (pre-flight warnings only)", PLUGIN_ID, config["mode"])
+    logger.info("%s: ready in %s mode (pre-flight warnings only)", PLUGIN_ID, config["mode"])
 
     ctx.register_cli_command(
         "payload-guard",
