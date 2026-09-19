@@ -1,0 +1,655 @@
+{
+  "pin_version": 1,
+  "pinned_at": "2026-09-19T21:11:09+00:00",
+  "source": {
+    "repo": "https://github.com/dacheah/payload-walls",
+    "file": "limits.json",
+    "limits_generated_at": "2026-09-19T11:56:24+00:00",
+    "limits_commit": "a8ccd8050a60504a9ca6566263f5f9affcff41f4",
+    "dataset_sha256": "e95e6f4d65a5b2b9717cba8642e674e3512fe9c5ff81fa9cd370b451640d781a",
+    "builder_sha256": "a0d117ec6a5ccf4e67367f4ac8a9c5e14e176f0c08c749b11e2d77fb154f010a",
+    "row_count": 540,
+    "scope": {
+      "measured_window": "2026-09-15 to 2026-09-19",
+      "method": "count ladder with tiny images first, then single-image climb, then squeeze-to-exact; JSON body bytes",
+      "conventions": [
+        "Sizes are JSON request-body bytes, reported in binary units (MiB = 1024^2).",
+        "A bracket is written 'largest accepted - first failure'; it is not a precise cap unless the squeeze run resolved one.",
+        "A row with no byte wall found is a LOWER BOUND on that host, never 'unlimited'.",
+        "'largest accepted' means HTTP 200 with max_tokens=1, one model per host, one region, one key tier.",
+        "Structural caps (item counts, token budgets) bind before bytes on several hosts; the byte wall is then unreachable rather than absent."
+      ]
+    }
+  },
+  "conventions": [
+    "Values are JSON request-body bytes in binary units (MiB = 1024^2).",
+    "kind=resolved_cap: a squeeze run resolved the exact ceiling.",
+    "kind=stated_in_error: the cap parsed out of the vendor's own rejection text.",
+    "kind=accepted_max: the largest request these probes saw accepted \u2014 exceeding it is unmeasured territory, not a proven failure.",
+    "One model per provider, one region, one key tier: a row is a dated sample, not a spec."
+  ],
+  "aliases": {
+    "_comment": [
+      "Maps a Hermes provider name onto a payload-walls provider id.",
+      "'region_mismatch' means the row was measured on the international host, so the CN/self-hosted",
+      "endpoint may differ. Providers absent from this file are reported as 'no measured row' rather",
+      "than silently treated as unlimited.",
+      "Keys are Hermes' canonical provider ids: a name with no key here is reported as 'no measured row' (UNKNOWN) and never as inside a ceiling. openrouter and github-copilot have no measured row in the dataset."
+    ],
+    "alibaba": {
+      "key": "alibaba",
+      "note": "DashScope/Model Studio international host"
+    },
+    "alibaba-cloud-cn": {
+      "key": "alibaba",
+      "region_mismatch": true,
+      "note": "measured on dashscope-intl; the CN host was not probed"
+    },
+    "alibaba-cn": {
+      "key": "alibaba",
+      "region_mismatch": true,
+      "note": "measured on dashscope-intl; the CN host was not probed"
+    },
+    "alibaba-token-plan": {
+      "key": "alibaba-token-plan"
+    },
+    "alibaba-token-plan-cn": {
+      "key": "alibaba-token-plan",
+      "region_mismatch": true,
+      "note": "measured on dashscope-intl; the CN host was not probed"
+    },
+    "anthropic": {
+      "key": "anthropic"
+    },
+    "copilot": {
+      "key": "copilot"
+    },
+    "copilot-acp": {
+      "key": "copilot"
+    },
+    "dashscope-cn": {
+      "key": "alibaba",
+      "region_mismatch": true,
+      "note": "mainland endpoint: this row was measured on dashscope-intl"
+    },
+    "deep-infra": {
+      "key": "deepinfra"
+    },
+    "deepinfra": {
+      "key": "deepinfra"
+    },
+    "deepinfra-ai": {
+      "key": "deepinfra"
+    },
+    "deepseek": {
+      "key": "deepseek"
+    },
+    "fireworks": {
+      "key": "fireworks"
+    },
+    "gemini": {
+      "key": "gemini"
+    },
+    "github-copilot": {
+      "key": "copilot"
+    },
+    "gmi": {
+      "key": "gmi"
+    },
+    "kimi-coding": {
+      "key": "kimi-coding"
+    },
+    "kimi-coding-cn": {
+      "key": "kimi-coding",
+      "region_mismatch": true,
+      "note": "measured on the international Moonshot host"
+    },
+    "kimi-for-coding": {
+      "key": "kimi-coding"
+    },
+    "minimax": {
+      "key": "minimax"
+    },
+    "minimax-cn": {
+      "key": "minimax",
+      "region_mismatch": true,
+      "note": "measured on the international MiniMax host"
+    },
+    "minimax-oauth": {
+      "key": "minimax"
+    },
+    "nebius": {
+      "key": "nebius-token-factory"
+    },
+    "nebius-token-factory": {
+      "key": "nebius-token-factory"
+    },
+    "novita": {
+      "key": "novita"
+    },
+    "nvidia": {
+      "key": "nvidia"
+    },
+    "ollama-cloud": {
+      "key": "ollama-cloud"
+    },
+    "openai": {
+      "key": "openai"
+    },
+    "openai-api": {
+      "key": "openai"
+    },
+    "openai-codex": {
+      "key": "openai-codex"
+    },
+    "qwen-oauth": {
+      "key": "alibaba",
+      "note": "measured with a workspace API key (pay-as-you-go) on dashscope-intl; an OAuth/subscription tier may meter differently"
+    },
+    "qwencloud": {
+      "key": "alibaba",
+      "note": "same endpoint and key tier as the 'alibaba' row (dashscope-intl)"
+    },
+    "token-factory": {
+      "key": "nebius-token-factory"
+    },
+    "upstage": {
+      "key": "upstage"
+    },
+    "xai": {
+      "key": "xai"
+    },
+    "xai-oauth": {
+      "key": "xai",
+      "note": "OAuth (SuperGrok) tier, not the API-key host; the xai row is documented-only and was never probed here"
+    },
+    "zai": {
+      "key": "zai"
+    }
+  },
+  "providers": {
+    "openai": {
+      "label": "OpenAI",
+      "host": "api.openai.com",
+      "wire": "openai",
+      "measured_on": "gpt-4.1-mini",
+      "measured_at": "2026-09-18",
+      "binding": "total_image_bytes_budget",
+      "confidence": "measured",
+      "limits": {
+        "image_total_bytes": {
+          "value": 50000000,
+          "kind": "stated_in_error",
+          "scope": "provider",
+          "as_stated": "50MB",
+          "basis": "encoded",
+          "metered_factor": 1.0257,
+          "note": "'50MB' read as decimal. The measured pair \u2014 17 x 2,053,887 B accepted, 18 x the same rejected with 'Total image size is 50.56MB, which exceeds the allowed limit of 50MB' \u2014 is reproduced by 50,000,000 against base64 bytes x 1.0257, and NOT by a 50 MiB reading. The vendor counts its own normalised copy, so a few very large images (8 x 12,144,445 B, accepted) pass far above this budget: those are downscaled before counting. Expect a false positive on that shape; the plugin records it."
+        }
+      },
+      "observed_max": {
+        "body_bytes": 129541440,
+        "items": 8,
+        "model": "gpt-4.1-mini"
+      },
+      "observed_reject_body_bytes": {
+        "image_total": 49294630
+      },
+      "notes": "Two payload shapes probed. (a) many-small: 17 x 2,053,887 B accepted, 18 rejected at 400 'Total image size is 50.56MB, which exceeds the allowed limit of 50MB.' (b) few-large: 8 x 12,144,448 B accepted (raw 97,155,560 B, body 129,541,440 B) - a 3.5x larger payload than the rejected small-image one. Rejection is HTTP 400, not 413.",
+      "documented": "Request size: Up to 512 MB total payload per request. Image count: Up to 1,500 images per request."
+    },
+    "alibaba": {
+      "label": "Alibaba Cloud Model Studio (DashScope international)",
+      "host": "dashscope-intl.aliyuncs.com",
+      "wire": "openai",
+      "measured_on": "qwen3.8-flash",
+      "measured_at": "2026-09-19",
+      "binding": "items_per_request",
+      "confidence": "measured",
+      "limits": {
+        "items": {
+          "value": 250,
+          "kind": "resolved_cap",
+          "scope": "provider",
+          "note": "DashScope says 'data-uri' rather than 'image'; Hermes' own classifier misses this wording"
+        },
+        "item_bytes": {
+          "value": 20971520,
+          "kind": "bracket",
+          "scope": "provider",
+          "basis": "encoded",
+          "note": "vendor wording is 'Maximum single Base64 content: 20 MiB'; the failing rung sent 20.3 MiB decoded (27 MiB encoded) so both readings fit the observation \u2014 encoded is the stricter one, and the 96-image 512 MiB run that passed stayed far below it"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 537173033,
+        "items": 96
+      },
+      "observed_reject_body_bytes": {
+        "item_bytes": 21244312
+      },
+      "notes": "200 items / 267,075,137 B body accepted. The 250-item bracket completed: 400 'Exceeded limit on max data-uri per request: 250'. Free-tier credit was exhausted during the final rung, so the last rung is structural-cap evidence, not a byte measurement.",
+      "documented": "Requests without Base64: body max 16 MiB. Requests with Base64 (Anthropic protocol): single Base64 item max 32 MiB. Requests with Base64 (other protocols): single Base64 item max 20 MiB. Requests with Base64 (whole body): max 64 MiB. After server-side decoding the whole body must still not exceed 16 MiB; exceeding the limit is rejected by the gateway with HTTP 413."
+    },
+    "gemini": {
+      "label": "Google Gemini API (AI Studio)",
+      "host": "generativelanguage.googleapis.com",
+      "wire": "gemini",
+      "measured_on": "gemini-3.5-flash-lite",
+      "measured_at": "2026-09-19",
+      "binding": "input_tokens",
+      "confidence": "measured",
+      "limits": {
+        "input_tokens": {
+          "value": 1048576,
+          "kind": "resolved_cap",
+          "scope": "model",
+          "note": "token budget, not a byte wall; counts depend on image resolution"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 340234555,
+        "items": 64,
+        "model": "gemini-3.5-flash-lite"
+      },
+      "observed_reject_body_bytes": {
+        "tokens": 42847355
+      },
+      "notes": "Earlier apparent ceilings on this host were per-model quota (429) and transient 503 ('high demand'), not payload size - retries resolved both. No byte cap found to 324 MiB.",
+      "documented": "Inline data: 100 MB per request or payload (50 MB for PDFs). File API upload: 2 GB per file, up to 20 GB per project."
+    },
+    "fireworks": {
+      "label": "Fireworks AI",
+      "host": "api.fireworks.ai",
+      "wire": "openai",
+      "measured_on": "accounts/fireworks/models/kimi-k2p6",
+      "measured_at": "2026-09-19",
+      "binding": "images_per_request",
+      "confidence": "measured",
+      "limits": {
+        "items": {
+          "value": 60,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 318855849,
+        "items": 30,
+        "model": "accounts/fireworks/models/kimi-k2p6"
+      },
+      "observed_reject_body_bytes": {},
+      "notes": "The 60-image rejection string is already public: browser-use/browsercode#127 (merged 2026-07-30). Non-conformance is with the vendor's own docs.",
+      "documented": "30 images maximum per request; the total base64-encoded images must be less than 10MB."
+    },
+    "anthropic": {
+      "label": "Anthropic",
+      "host": "api.anthropic.com",
+      "wire": "anthropic",
+      "measured_on": "claude-haiku-4-5-20251001",
+      "measured_at": "2026-09-16",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {
+        "body_bytes": {
+          "value": 33554432,
+          "kind": "resolved_cap",
+          "scope": "provider",
+          "note": "413 request_too_large; per-image cap is 10 MiB"
+        },
+        "item_bytes": {
+          "value": 10485760,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 33452885,
+        "items": 6,
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "observed_reject_body_bytes": {
+        "body": 33571037,
+        "item_bytes": 10587865
+      },
+      "notes": "An earlier circulating '5 MB per image' figure is the Bedrock/Vertex/consumer-app number, not the direct API. Rejection is 413 request_too_large.",
+      "documented": "Request size: 32 MB for the Messages API (256 MB Batches, 500 MB Files). Per image: 10 MB base64 on the direct API (5 MB on Amazon Bedrock and Google Cloud)."
+    },
+    "deepseek": {
+      "label": "DeepSeek",
+      "host": "api.deepseek.com",
+      "wire": "openai",
+      "measured_on": "deepseek-flash",
+      "measured_at": "2026-09-16",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {
+        "items": {
+          "value": 600,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        },
+        "body_bytes": {
+          "value": 50331648,
+          "kind": "resolved_cap",
+          "scope": "provider",
+          "note": "48 MiB body wall; per-image 32 MiB"
+        },
+        "item_bytes": {
+          "value": 33554432,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 42512201,
+        "items": 1,
+        "model": "deepseek-flash"
+      },
+      "observed_reject_body_bytes": {
+        "body": 50353869,
+        "item_bytes": 44739581
+      },
+      "notes": "413 from openresty: 'Failed to buffer the request body: length limit exceeded'. Vision is live on the direct API although /models lists no vision id.",
+      "documented": "Request body 48 MiB; image file size limit 32 MB; up to 600 images."
+    },
+    "zai": {
+      "label": "Z.ai (GLM)",
+      "host": "api.z.ai",
+      "wire": "openai",
+      "measured_on": "glm-4.5v",
+      "measured_at": "2026-09-16",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {},
+      "observed_max": {
+        "body_bytes": 201954077,
+        "items": 19,
+        "model": "glm-4.5v"
+      },
+      "observed_reject_body_bytes": {
+        "body": 233821302
+      },
+      "notes": "Wording ('exceeds the limit') matches the pattern clients use to detect context overflow, so an oversize body here can be misclassified as a token problem. No CDN in front (Alibaba Cloud IPs).",
+      "documented": "No numeric request-size figure located on the vendor's error-code page."
+    },
+    "kimi-coding": {
+      "label": "Moonshot AI (Kimi)",
+      "host": "api.moonshot.ai",
+      "wire": "openai",
+      "measured_on": "kimi-k3",
+      "measured_at": "2026-09-15",
+      "binding": "edge_body_bytes",
+      "confidence": "measured",
+      "limits": {},
+      "observed_max": {
+        "body_bytes": 148808301,
+        "items": 14,
+        "model": "kimi-k3"
+      },
+      "observed_reject_body_bytes": {
+        "body": 159405776
+      },
+      "notes": "RPM 3 on this key - space the rungs. Live model id kimi-k3 (kimi-k2-turbo-preview 404s).",
+      "documented": "100 MB request body (vision guide)."
+    },
+    "minimax": {
+      "label": "MiniMax",
+      "host": "api.minimax.io",
+      "wire": "anthropic",
+      "measured_on": "MiniMax-M3",
+      "measured_at": "2026-09-15",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {
+        "body_bytes": {
+          "value": 134217728,
+          "kind": "resolved_cap",
+          "scope": "provider",
+          "note": "128 MiB exact; per-image 10 MiB"
+        },
+        "item_bytes": {
+          "value": 10485760,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 126880646,
+        "items": 192,
+        "model": "MiniMax-M3"
+      },
+      "observed_reject_body_bytes": {
+        "body": 169366662,
+        "item_bytes": 21245198
+      },
+      "notes": "Probed over the Anthropic-compatible wire. A PAYG (sk-api-) key returns 402 insufficient balance; the subscription key works.",
+      "documented": "No numeric body-cap figure located; error-code page lists the 413 wording only."
+    },
+    "deepinfra": {
+      "label": "DeepInfra",
+      "host": "api.deepinfra.com",
+      "wire": "openai",
+      "measured_on": "Inkling-Small",
+      "measured_at": "2026-09-16",
+      "binding": "images_per_request",
+      "confidence": "measured",
+      "limits": {
+        "items": {
+          "value": 8,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 67615733,
+        "model": "thinkingmachines/Inkling-Small"
+      },
+      "observed_reject_body_bytes": {},
+      "notes": "Served by uvicorn, no CDN. The 500 is the interesting part: a client retrying 5xx will loop on a request that can never succeed.",
+      "documented": "No numeric request-size figure located; rate-limit page documents concurrency only."
+    },
+    "novita": {
+      "label": "Novita AI",
+      "host": "api.novita.ai",
+      "wire": "openai",
+      "measured_on": "qwen3-vl-235b",
+      "measured_at": "2026-09-16",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {},
+      "observed_max": {
+        "body_bytes": 53141331,
+        "items": 5,
+        "model": "qwen/qwen3-vl-235b-a22b-instruct"
+      },
+      "observed_reject_body_bytes": {
+        "body": 95643543
+      },
+      "notes": "Cloudflare-fronted. Origin is slow: 199 s to answer a 50 MiB body - latency, not rejection; use a long client timeout or the wall looks smaller than it is.",
+      "documented": "Error catalogue lists INVALID_REQUEST_BODY and IMAGE_FILE_EXCEEDS_MAX_SIZE without numeric ceilings."
+    },
+    "nvidia": {
+      "label": "NVIDIA NIM (integrate.api.nvidia.com)",
+      "host": "integrate.api.nvidia.com",
+      "wire": "openai",
+      "measured_on": "meta/llama-3.2-11b-vision-instruct",
+      "measured_at": "2026-09-15",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {
+        "body_bytes": {
+          "value": 26214400,
+          "kind": "resolved_cap",
+          "scope": "provider",
+          "note": "25 MiB exact, stated in the error text"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 16906577,
+        "model": "meta/llama-3.2-11b-vision-instruct"
+      },
+      "observed_reject_body_bytes": {
+        "body": 31881685
+      },
+      "notes": "The same 25 MiB string is quoted in NousResearch/hermes-agent#112473 - that is this project's own prior slice, not independent prior art.",
+      "documented": "No numeric request-size figure located in the API reference."
+    },
+    "ollama-cloud": {
+      "label": "Ollama Cloud",
+      "host": "ollama.com",
+      "wire": "openai",
+      "measured_on": "gemma4:31b",
+      "measured_at": "2026-09-15",
+      "binding": "body_bytes",
+      "confidence": "measured",
+      "limits": {
+        "body_bytes": {
+          "value": 16777216,
+          "kind": "bracket",
+          "scope": "provider",
+          "note": "bracket only (15.9-16.5 MiB) \u2014 the cap is not exact"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 16721049,
+        "model": "gemma4:31b"
+      },
+      "observed_reject_body_bytes": {
+        "body": 17251293
+      },
+      "notes": "The measured 16 MiB coincides with a common framework default request-body guard, so the wall may be infrastructure rather than a published product limit.",
+      "documented": "No numeric payload figure located; the pricing page documents plan tiers only."
+    },
+    "gmi": {
+      "label": "GMI Cloud",
+      "host": "api.gmi-serving.com",
+      "wire": "openai",
+      "measured_on": "gemini-3.5-flash",
+      "measured_at": "2026-09-16",
+      "binding": "edge_body_bytes",
+      "confidence": "measured",
+      "limits": {},
+      "observed_max": {
+        "body_bytes": 42518826,
+        "model": "google/gemini-3.5-flash"
+      },
+      "observed_reject_body_bytes": {
+        "body": 106285377
+      },
+      "notes": "Ambiguous row: the first failure is plausibly the CDN, so the origin ceiling is unestablished above 40.5 MiB.",
+      "documented": "Rate-limit page documents RPM/TPM and concurrency, no body ceiling."
+    },
+    "nebius-token-factory": {
+      "label": "Nebius Token Factory",
+      "host": "api.tokenfactory.nebius.com",
+      "wire": "openai",
+      "measured_on": "google/gemma-3-27b-it",
+      "measured_at": "2026-09-15",
+      "binding": "per_item_bytes",
+      "confidence": "measured",
+      "limits": {
+        "item_bytes": {
+          "value": 10485760,
+          "kind": "resolved_cap",
+          "scope": "provider"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 106228993,
+        "model": "google/gemma-3-27b-it"
+      },
+      "observed_reject_body_bytes": {},
+      "notes": "An oversize image returns HTTP 400 with a pydantic message - 'Input should be a valid string' on messages[0].content - not a 413, so 413-keyed recovery never fires here.",
+      "documented": "No numeric payload figure located."
+    },
+    "upstage": {
+      "label": "Upstage",
+      "host": "api.upstage.ai",
+      "wire": "openai",
+      "measured_on": "solar-pro4",
+      "measured_at": "2026-09-15",
+      "binding": "capability",
+      "confidence": "measured",
+      "limits": {
+        "items": {
+          "value": 0,
+          "kind": "capability",
+          "scope": "provider",
+          "note": "the measured endpoint rejects image input outright ('Image input is not allowed for this model')"
+        }
+      },
+      "observed_max": {
+        "body_bytes": 109,
+        "items": 0,
+        "model": "solar-pro4"
+      },
+      "observed_reject_body_bytes": {},
+      "notes": "No vision on the chat endpoint at all - a capability gap, not a limit.",
+      "documented": "Images are handled by separate products (Document Parse / Document OCR / Information Extraction), not by the chat endpoint."
+    },
+    "xai": {
+      "label": "xAI",
+      "host": "api.x.ai",
+      "wire": "openai",
+      "measured_on": null,
+      "measured_at": null,
+      "binding": "unknown",
+      "confidence": "documented",
+      "limits": {
+        "item_bytes": {
+          "value": 20971520,
+          "kind": "documented",
+          "scope": "provider",
+          "note": "documented-only row: no API key on the measuring host, so this is NOT verified here"
+        }
+      },
+      "observed_max": {},
+      "observed_reject_body_bytes": {},
+      "notes": "Documented-only row. Do not treat the 25 MB as measured.",
+      "documented": "Per-image limit 20 MiB documented; Batch API states 25 MB per request. No chat-body ceiling published."
+    },
+    "openai-codex": {
+      "label": "OpenAI Codex backend (ChatGPT)",
+      "host": "chatgpt.com/backend-api/codex",
+      "wire": "openai",
+      "measured_on": null,
+      "measured_at": null,
+      "binding": "unknown",
+      "confidence": "unmeasured",
+      "limits": {},
+      "observed_max": {},
+      "observed_reject_body_bytes": {},
+      "notes": "Included to record that the gap is a quota artefact. Note also that this backend silently falls back to a different provider on some client configurations, so a success here must be verified by reading the response's provider field, not the output text.",
+      "documented": "No published payload ceiling for this private backend."
+    },
+    "copilot": {
+      "label": "GitHub Copilot API",
+      "host": "api.githubcopilot.com",
+      "wire": "openai",
+      "measured_on": null,
+      "measured_at": null,
+      "binding": "unknown",
+      "confidence": "unmeasured",
+      "limits": {},
+      "observed_max": {},
+      "observed_reject_body_bytes": {},
+      "notes": "Recorded as an observed-413 row with no measurement. Hermes aliases github-models onto this id, which is a different host and tier.",
+      "documented": "No published payload ceiling."
+    },
+    "alibaba-token-plan": {
+      "label": "Alibaba Cloud Model Studio (token-plan endpoint)",
+      "host": "token-plan.ap-southeast-1.maas.aliyuncs.com",
+      "wire": "openai",
+      "measured_on": null,
+      "measured_at": "2026-09-15",
+      "binding": "unknown",
+      "confidence": "unmeasured",
+      "limits": {},
+      "observed_max": {},
+      "observed_reject_body_bytes": {},
+      "notes": "Unmeasured. Variant endpoint; the same key 401s here.",
+      "documented": "No published payload ceiling for this endpoint variant."
+    }
+  }
+}

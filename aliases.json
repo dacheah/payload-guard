@@ -1,0 +1,139 @@
+{
+  "_comment": [
+    "Maps a Hermes provider name onto a payload-walls provider id.",
+    "'region_mismatch' means the row was measured on the international host, so the CN/self-hosted",
+    "endpoint may differ. Providers absent from this file are reported as 'no measured row' rather",
+    "than silently treated as unlimited.",
+    "Keys are Hermes' canonical provider ids: a name with no key here is reported as 'no measured row' (UNKNOWN) and never as inside a ceiling. openrouter and github-copilot have no measured row in the dataset."
+  ],
+  "alibaba": {
+    "key": "alibaba",
+    "note": "DashScope/Model Studio international host"
+  },
+  "alibaba-cloud-cn": {
+    "key": "alibaba",
+    "region_mismatch": true,
+    "note": "measured on dashscope-intl; the CN host was not probed"
+  },
+  "alibaba-cn": {
+    "key": "alibaba",
+    "region_mismatch": true,
+    "note": "measured on dashscope-intl; the CN host was not probed"
+  },
+  "alibaba-token-plan": {
+    "key": "alibaba-token-plan"
+  },
+  "alibaba-token-plan-cn": {
+    "key": "alibaba-token-plan",
+    "region_mismatch": true,
+    "note": "measured on dashscope-intl; the CN host was not probed"
+  },
+  "anthropic": {
+    "key": "anthropic"
+  },
+  "copilot": {
+    "key": "copilot"
+  },
+  "copilot-acp": {
+    "key": "copilot"
+  },
+  "dashscope-cn": {
+    "key": "alibaba",
+    "region_mismatch": true,
+    "note": "mainland endpoint: this row was measured on dashscope-intl"
+  },
+  "deep-infra": {
+    "key": "deepinfra"
+  },
+  "deepinfra": {
+    "key": "deepinfra"
+  },
+  "deepinfra-ai": {
+    "key": "deepinfra"
+  },
+  "deepseek": {
+    "key": "deepseek"
+  },
+  "fireworks": {
+    "key": "fireworks"
+  },
+  "gemini": {
+    "key": "gemini"
+  },
+  "github-copilot": {
+    "key": "copilot"
+  },
+  "gmi": {
+    "key": "gmi"
+  },
+  "kimi-coding": {
+    "key": "kimi-coding"
+  },
+  "kimi-coding-cn": {
+    "key": "kimi-coding",
+    "region_mismatch": true,
+    "note": "measured on the international Moonshot host"
+  },
+  "kimi-for-coding": {
+    "key": "kimi-coding"
+  },
+  "minimax": {
+    "key": "minimax"
+  },
+  "minimax-cn": {
+    "key": "minimax",
+    "region_mismatch": true,
+    "note": "measured on the international MiniMax host"
+  },
+  "minimax-oauth": {
+    "key": "minimax"
+  },
+  "nebius": {
+    "key": "nebius-token-factory"
+  },
+  "nebius-token-factory": {
+    "key": "nebius-token-factory"
+  },
+  "novita": {
+    "key": "novita"
+  },
+  "nvidia": {
+    "key": "nvidia"
+  },
+  "ollama-cloud": {
+    "key": "ollama-cloud"
+  },
+  "openai": {
+    "key": "openai"
+  },
+  "openai-api": {
+    "key": "openai"
+  },
+  "openai-codex": {
+    "key": "openai-codex"
+  },
+  "qwen-oauth": {
+    "key": "alibaba",
+    "note": "measured with a workspace API key (pay-as-you-go) on dashscope-intl; an OAuth/subscription tier may meter differently"
+  },
+  "qwencloud": {
+    "key": "alibaba",
+    "note": "same endpoint and key tier as the 'alibaba' row (dashscope-intl)"
+  },
+  "token-factory": {
+    "key": "nebius-token-factory"
+  },
+  "upstage": {
+    "key": "upstage"
+  },
+  "xai": {
+    "key": "xai"
+  },
+  "xai-oauth": {
+    "key": "xai",
+    "note": "OAuth (SuperGrok) tier, not the API-key host; the xai row is documented-only and was never probed here"
+  },
+  "zai": {
+    "key": "zai"
+  }
+}

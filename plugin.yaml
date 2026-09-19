@@ -1,0 +1,32 @@
+name: payload-guard
+version: 1.0.1
+description: >-
+  Pre-flight the outgoing request against the empirically measured provider payload
+  ceilings published in github.com/dacheah/payload-walls: body bytes, total image
+  bytes, per-item bytes and item count, plus the input-token budget. Warns by default;
+  in shrink mode it rewrites the payload to fit before the request is sent.
+author: Dan Cheah, Hermes Agent
+kind: standalone
+requires_hermes: ">=0.21.0"
+platforms:
+  - linux
+tags:
+  - limits
+  - payload
+  - observability
+provides_hooks:
+  - pre_api_request
+  - post_api_request
+  - api_request_error
+provides_middleware:
+  - llm_request
+provides_commands:
+  - payload-guard
+optional_env:
+  - HERMES_PAYLOAD_GUARD_STATE
+  - PAYLOAD_WALLS_JSON
+hooks:
+  - pre_api_request
+  - post_api_request
+  - api_request_error
+# llm_request is a MIDDLEWARE, not a hook: declared under provides_middleware below.
