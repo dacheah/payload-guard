@@ -1,0 +1,51 @@
+name: audit-gate
+
+# Gates security-audit runs on their machine-verifiable artefacts. The self-test runs on every
+# push/PR so the gate always exercises its own failure paths; real artefacts are gated when present.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Self-test the gate (valid / invalid / missing / blocked)
+        run: bash tools/audit-gate/self-test.sh
+
+      - name: Gate any audit artefact in the tree
+        run: |
+          set -u
+          mapfile -t artefacts < <(
+            find . -type f \( -name findings.json -o -name coverage-ledger.json \) \
+              -not -path './.git/*' -not -path './tools/audit-gate/*'
+          )
+          if [ "${#artefacts[@]}" -eq 0 ]; then
+            echo "::notice title=audit-gate::no audit artefact in tree - gate holds no verdict (MISSING, exit 2)"
+            exit 0
+          fi
+          dirs=$(printf '%s\n' "${artefacts[@]}" | xargs -n1 dirname | sort -u)
+          fail=0
+          while read -r d; do
+            [ -n "$d" ] || continue
+            rc=0
+            python3 tools/audit-gate/audit-gate.py --json "$d" || rc=$?
+            case "$rc" in
+              0) echo "gate: $d VALID" ;;
+              1) echo "::error title=audit-gate::$d INVALID - findings failed validation"; fail=1 ;;
+              2) echo "::warning title=audit-gate::$d MISSING - artefact pair incomplete, no verdict held" ;;
+              *) echo "::warning title=audit-gate::$d BLOCKED - validators unavailable (exit $rc)" ;;
+            esac
+          done <<< "$dirs"
+          exit "$fail"

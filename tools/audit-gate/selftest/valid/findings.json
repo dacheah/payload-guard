@@ -1,0 +1,60 @@
+[
+ {
+  "verdict": "confirmed",
+  "fingerprint": "sample-text-1",
+  "title": "sample-text-1",
+  "description": "sample-text-1",
+  "root_cause": "sample-text-1",
+  "intended_behavior": "sample-text-1",
+  "trace": [
+   {
+    "kind": "entrypoint",
+    "file": "sample-text-1",
+    "line": 1,
+    "scope": "sample-text-1",
+    "description": "sample-text-1"
+   }
+  ],
+  "evidence": [
+   {
+    "file": "sample-text-1",
+    "line": 1,
+    "description": "sample-text-1"
+   }
+  ],
+  "conditions": [
+   {
+    "kind": "authentication_level",
+    "description": "sample-text-1"
+   }
+  ],
+  "execution": {
+   "attacker_perspective": "sample-text-1",
+   "payloads": [
+    "s"
+   ],
+   "instructions": [
+    "sample-text-1"
+   ],
+   "observed_result": "sample-text-1"
+  },
+  "remediation": {
+   "strategy": "sample-text-1"
+  },
+  "severity": {
+   "likelihood": {
+    "score": "informational",
+    "reason": "sample-text-1"
+   },
+   "impact": {
+    "score": "informational",
+    "reason": "sample-text-1"
+   },
+   "overall_severity": "informational"
+  },
+  "confidence": {
+   "score": "low",
+   "reason": "sample-text-1"
+  }
+ }
+]
