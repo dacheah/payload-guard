@@ -5,6 +5,7 @@ name: audit-gate
 
 on:
   push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
 
@@ -14,10 +15,14 @@ permissions:
 jobs:
   audit-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to commit SHAs, not moving tags — third-party action code runs with this repo's token.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
 
